@@ -18,5 +18,9 @@ b64TextDecodeBs = convertFromBase Base64 . TE.encodeUtf8
 mustB64TextDecodeBs :: Text -> ByteString
 mustB64TextDecodeBs = fromRight . b64TextDecodeBs
 
+b64BsDecodeText :: ByteString -> Text
+b64BsDecodeText = TE.decodeUtf8 . convertToBase Base64
+
+
 mustB64DecodeBs :: ByteString -> ByteString
 mustB64DecodeBs = fromRight . convertFromBase Base64

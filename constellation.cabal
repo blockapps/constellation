@@ -24,6 +24,7 @@ library
                        Constellation.Enclave.Types
                        Constellation.Node
                        Constellation.Node.Api
+                       Constellation.Node.ServantApi
                        Constellation.Node.Config
                        Constellation.Node.Main
                        Constellation.Node.Storage.BerkeleyDb
@@ -47,6 +48,7 @@ library
                      , aeson >= 0.11
                      , async >= 2.1
                      , auto-update >= 0.1.4
+                     , base64-bytestring
                      , BerkeleyDB >= 0.8.7
                      , binary >= 0.8.3
                      , byteable >= 0.1.1
@@ -75,6 +77,8 @@ library
                      , raw-strings-qq >= 1.1
                      -- , resource-pool
                      , saltine >= 0.0.0.4
+                     , servant
+                     , servant-server
                      , split >= 0.2.3.1
                      -- , sqlite-simple
                      , text >= 1.2.2.1
