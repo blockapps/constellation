@@ -5,7 +5,7 @@
 module Constellation.Enclave.Types where
 
 import ClassyPrelude
-import Data.Aeson (FromJSON(parseJSON))
+import Data.Aeson (FromJSON(..), ToJSON(..))
 import Data.Binary (Binary(put, get))
 import Data.ByteArray.Encoding (Base(Base64), convertToBase)
 import Data.Hashable (Hashable(hashWithSalt))
@@ -14,7 +14,7 @@ import qualified Crypto.Saltine.Class as S
 import qualified Crypto.Saltine.Core.Box as Box
 import qualified Data.Aeson as AE
 
-import Constellation.Util.ByteString (b64TextDecodeBs)
+import Constellation.Util.ByteString
 
 newtype PublicKey = PublicKey { unPublicKey :: Box.PublicKey }
                   deriving (Eq)
@@ -37,6 +37,9 @@ instance FromJSON PublicKey where
             Nothing  -> fail "Failed to mkPublicKey"
             Just pub -> return pub
     parseJSON _             = fail "PublicKey must be an Aeson String"
+
+instance ToJSON PublicKey where
+  toJSON = toJSON . b64BsDecodeText . S.encode . unPublicKey
 
 mkPublicKey :: ByteString -> Maybe PublicKey
 mkPublicKey bs = PublicKey <$> S.decode bs
