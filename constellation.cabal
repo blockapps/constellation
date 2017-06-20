@@ -60,14 +60,15 @@ library
                      , data-default >= 0.7.1.1
                      , directory >= 1.2.6.2
                      , either >= 4.4
+                     , ether
                      , errors
                      , entropy >= 0.3
                      , hashable >= 1.2.4
                      , haskeline >= 0.7.2.3
                      , htoml >= 1.0.0.1
                      , http-client
-                     , http-conduit >= 2.1
                      , http-client-tls
+                     , http-conduit >= 2.1
                      , http-media
                      , http-types
                      , http-reverse-proxy
@@ -83,9 +84,9 @@ library
                      , raw-strings-qq >= 1.1
                      -- , resource-pool
                      , saltine >= 0.0.0.4
-                     , servant
-                     , servant-client
-                     , servant-server
+                     , servant >= 0.10
+                     , servant-client >= 0.10
+                     , servant-server >= 0.10
                      , split >= 0.2.3.1
                      -- , sqlite-simple
                      , tagged
@@ -139,6 +140,8 @@ test-suite constellation-test
                      , classy-prelude
                      , cryptonite
                      , filepath
+                     , http-client
+                     , http-client-tls
                      , http-types
                      , iproute
                      , logging
@@ -152,6 +155,7 @@ test-suite constellation-test
                      , text
                      , text-format
                      , unordered-containers
+                     , servant-client
                      , warp
   default-language:    Haskell2010
 

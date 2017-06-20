@@ -18,6 +18,9 @@ import Text.Read (read)
 import qualified Data.ByteString.Char8 as BC
 import qualified Data.ByteString.Lazy.Char8 as BLC
 import qualified Network.Wai.Handler.Warp as Warp
+import Servant.Client
+import Network.HTTP.Client (newManager)
+import Network.HTTP.Client.TLS (tlsManagerSettings)
 
 import Constellation.Enclave.Types (PublicKey, mkPublicKey)
 import Constellation.Node (nodeRefresh)
@@ -26,7 +29,9 @@ import Constellation.Node.Types (Node(nodeStorage), Storage(closeStorage))
 import Constellation.Util.ByteString (mustB64TextDecodeBs)
 import qualified Constellation.Node.Api as NodeApi
 
+import Constellation.Util.Network (getUnusedPort)
 import Constellation.TestUtil (kvTest, setupTestNode, link, testSendPayload)
+import qualified Constellation.Node.ServantApi as SApi
 
 tests :: TestTree
 tests = testGroup "Constellation.Node.Api"
@@ -61,9 +66,9 @@ testSendAndReceivePayload = testCaseSteps "sendAndReceivePayload" $ \step ->
         (node1Var, port1) <- setupTestNode d "node1"
         (node2Var, port2) <- setupTestNode d "node2"
         (node3Var, port3) <- setupTestNode d "node3"
-        tid1 <- forkIO $ Warp.run port1 $ NodeApi.app Nothing Private node1Var
-        tid2 <- forkIO $ Warp.run port2 $ NodeApi.app Nothing Private node2Var
-        tid3 <- forkIO $ Warp.run port3 $ NodeApi.app Nothing Private node3Var
+        (nid1,pid1) <- proxyNode (node1Var, port1)
+        (nid2,pid2) <- proxyNode (node2Var, port2)
+        (nid3,pid3) <- proxyNode (node3Var, port3)
 
         step "Linking nodes"
         atomically $ do
@@ -83,16 +88,26 @@ testSendAndReceivePayload = testCaseSteps "sendAndReceivePayload" $ \step ->
 
         step "Sending a payload from node1 to node2"
         testSendPayload node1Var node2Var
-        
+
         -- step "Ensuring that node3 didn't receive the payload"
         -- TODO
-        
+
         step "Cleaning up"
-        killThread tid1
-        killThread tid2
-        killThread tid3
+        killThread nid1 >> killThread pid1
+        killThread nid2 >> killThread pid2
+        killThread nid3 >> killThread pid3
         nodes <- atomically $ mapM readTVar [node1Var, node2Var, node3Var]
         mapM_ (closeStorage . nodeStorage) nodes
+
+proxyNode :: (TVar Node, Int) -> IO (ThreadId, ThreadId)
+proxyNode (node, nodePort) = do
+  proxyPort <- getUnusedPort
+  mgr <- newManager tlsManagerSettings
+  let burl = BaseUrl Https "localhost" nodePort ""
+      env = ClientEnv mgr burl
+  nid <- forkIO $ Warp.run nodePort $ NodeApi.app Nothing Private node
+  pid <- forkIO $ SApi.initProxyApp' env proxyPort
+  return (nid, pid)
 
 header1 :: Header
 header1 = ("h1", BC.pack "payload1")

@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -8,7 +9,8 @@
 
 module Constellation.Node.ServantApi where
 
-
+import Data.Function ((&))
+import qualified Control.Monad.Ether.Implicit as I
 import Control.Monad.IO.Class
 import Control.Error
 import Data.Aeson
@@ -25,7 +27,6 @@ import Network.HTTP.ReverseProxy
 import           Network.Wai.Middleware.RequestLogger (logStdoutDev)
 
 
-import Servant.Server.Internal.ServantErr
 import qualified Data.Text.Encoding as TE
 
 import qualified Network.HTTP.Types as H
@@ -35,9 +36,9 @@ import Constellation.Util.ByteString (mustB64TextDecodeBs, b64BsDecodeText)
 
 import Servant
 import Servant.Client
+import Servant.Server ()
 
 import System.Environment (lookupEnv)
-import System.IO.Unsafe (unsafePerformIO)
 
 import           Network.Wai.Handler.Warp (run)
 
@@ -125,10 +126,11 @@ instance ToJSON DeleteRequest where
 --------------------------------------------------------------------------------
 
 type API = "send" :> ReqBody '[JSON] SendRequest :> Post '[JSON] SendResponse
-      :<|> "sendRaw" :> Raw
       :<|> "receive" :> ReqBody '[JSON] ReceiveRequest :> Post '[JSON] ReceiveResponse
       :<|> "receiveRaw" :> ReqBody '[JSON] ReceiveRequest :> Post '[JSON] ReceiveResponse
       :<|> "delete" :> ReqBody '[JSON] DeleteRequest :> Post '[JSON] NoContent
+
+type RawSend = "sendRaw" :> Raw
 
 --------------------------------------------------------------------------------
 -- * Client
@@ -140,7 +142,6 @@ postReceiveRawClient :: ReceiveRequest -> ClientM ReceiveResponse
 postDeleteClient :: DeleteRequest -> ClientM NoContent
 
 postSendClient
-  :<|> _
   :<|> postReceiveClient
   :<|> postReceiveRawClient
   :<|> postDeleteClient = client (Proxy @API)
@@ -149,37 +150,43 @@ postSendClient
 -- * Server
 --------------------------------------------------------------------------------
 
-server :: Server API
+newtype ProxyHandler a =
+  ProxyHandler { runProxyHandler :: I.ReaderT ClientEnv (ExceptT ServantErr IO) a }
+    deriving (Functor, Applicative, Monad, MonadIO, I.MonadReader ClientEnv, MonadError ServantErr)
+
+server :: ServerT API ProxyHandler
 server = postSend
-  :<|> postSendRaw
-  :<|> postReceive
+  :<|> postReceiveRaw
   :<|> postReceive
   :<|> postDelete
 
-
-postSend :: SendRequest -> Handler SendResponse
+postSend :: SendRequest -> ProxyHandler SendResponse
 postSend sReq = do
+  constellationEnv <- I.ask
   resp <- liftIO $ runClientM (postSendClient sReq) constellationEnv
   either (throwError . clientErrToServantErr) return resp
 
-postSendRaw :: Application
-postSendRaw =
+postSendRaw :: ClientEnv -> Application
+postSendRaw constellationEnv =
   let (ClientEnv mgr (BaseUrl _ hst prt _)) = constellationEnv
       dest = ProxyDest (C8.pack hst) prt
   in waiProxyTo (const . return $ WPRProxyDest dest) defaultOnExc mgr
 
-postReceive :: ReceiveRequest -> Handler ReceiveResponse
+postReceive :: ReceiveRequest -> ProxyHandler ReceiveResponse
 postReceive rReq = do
+  constellationEnv <- I.ask
   resp <- liftIO $ runClientM (postReceiveClient rReq) constellationEnv
   either (throwError . clientErrToServantErr) return resp
 
-postReceiveRaw :: ReceiveRequest -> Handler ReceiveResponse
+postReceiveRaw :: ReceiveRequest -> ProxyHandler ReceiveResponse
 postReceiveRaw rReq = do
+  constellationEnv <- I.ask
   resp <- liftIO $ runClientM (postReceiveRawClient rReq) constellationEnv
   either (throwError . clientErrToServantErr) return resp
 
-postDelete :: DeleteRequest -> Handler NoContent
+postDelete :: DeleteRequest -> ProxyHandler NoContent
 postDelete dReq = do
+  constellationEnv <- I.ask
   resp <- liftIO $ runClientM (postDeleteClient dReq) constellationEnv
   either (throwError . clientErrToServantErr) return resp
 
@@ -187,20 +194,34 @@ postDelete dReq = do
 -- ** Application
 --------------------------------------------------------------------------------
 
-app :: Application
-app = logStdoutDev $ serve (Proxy @API) server
+app :: ClientEnv -> Application
+app env =
+  logStdoutDev $ serve (Proxy @(API :<|> RawSend)) $ (enter (phi env) server) :<|> (postSendRaw env)
 
-constellationEnv :: ClientEnv
-constellationEnv = unsafePerformIO $ do
+initProxyApp :: IO ()
+initProxyApp = do
+  mprt <- lookupEnv "PROXY_PORT"
+  env <- mkConstellationEnv
+  case read <$> mprt of
+    Nothing -> error "Missing Env Var: PROXY_PORT"
+    Just port -> run port $ app env
+
+initProxyApp' :: ClientEnv -> Int -> IO ()
+initProxyApp' env port = run port $ app env
+
+phi :: ClientEnv -> ProxyHandler :~> Handler
+phi env = NT $ \m -> runProxyHandler m & flip I.runReaderT env & Handler
+
+mkConstellationEnv :: IO ClientEnv
+mkConstellationEnv = do
   mgr <- newManager tlsManagerSettings
-  ebaseUrl <- makeBaseUrl
+  ebaseUrl <- runExceptT $ makeBaseUrl
   case ebaseUrl of
     Left e -> error e
     Right baseUrl -> return $ ClientEnv mgr baseUrl
-{-# NOINLINE constellationEnv #-}
 
-makeBaseUrl :: IO (Either String BaseUrl)
-makeBaseUrl = runExceptT $ do
+makeBaseUrl :: ExceptT String IO BaseUrl
+makeBaseUrl = do
     sch <- lookupEnv "CONSTELLATION_SCHEME" !? "Missing Env Var: CONSTELLATION_SCHEME" >>= parseScheme
     host <- lookupEnv "CONSTELLATION_HOST" !? "Missing Env Var: CONSTELLATION_HOST"
     port <- lookupEnv "CONSTELLATION_PORT" !? "Missing Env Var: CONSTELLATION_PORT" >>= return . read
@@ -212,11 +233,6 @@ makeBaseUrl = runExceptT $ do
       "Http" -> return Http
       "Https" -> return Https
       _ -> throwError "URI scheme must be Http or Https."
-
-initProxyApp :: IO ()
-initProxyApp = do
-  mprt <- lookupEnv "PROXY_PORT"
-  maybe (error "Missing Env Var: PROXY_PORT") (flip run app . read) mprt
 
 --------------------------------------------------------------------------------
 clientErrToServantErr :: ServantError -> ServantErr
