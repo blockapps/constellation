@@ -290,7 +290,7 @@ type NodeApi = (API :<|> P2P) :<|> RawSend
 
 app :: ClientEnv -> Application
 app env =
-  logStdoutDev $ serve (Proxy @NodeApi) $ (enter (phi env) (server :<|> p2pServer)) :<|> (postSendRaw env)
+  logStdoutDev $ serve (Proxy @NodeApi) $ enter (phi env) (server :<|> p2pServer) :<|> postSendRaw env
 
 initProxyApp :: IO ()
 initProxyApp = do
@@ -309,7 +309,7 @@ phi env = NT $ \m -> runProxyHandler m & flip I.runReaderT env & Handler
 mkConstellationEnv :: IO ClientEnv
 mkConstellationEnv = do
   mgr <- newManager tlsManagerSettings
-  ebaseUrl <- runExceptT $ makeBaseUrl
+  ebaseUrl <- runExceptT makeBaseUrl
   case ebaseUrl of
     Left e        -> error e
     Right baseUrl -> return $ ClientEnv mgr baseUrl
@@ -318,7 +318,7 @@ makeBaseUrl :: ExceptT String IO BaseUrl
 makeBaseUrl = do
     sch <- lookupEnv "CONSTELLATION_SCHEME" !? "Missing Env Var: CONSTELLATION_SCHEME" >>= parseScheme
     host <- lookupEnv "CONSTELLATION_HOST" !? "Missing Env Var: CONSTELLATION_HOST"
-    port <- lookupEnv "CONSTELLATION_PORT" !? "Missing Env Var: CONSTELLATION_PORT" >>= return . read
+    port <- fmap read (lookupEnv "CONSTELLATION_PORT" !? "Missing Env Var: CONSTELLATION_PORT")
     path <- lookupEnv "CONSTELLATION_PATH" !? "Missing Env Var: CONSTELLATION_PATH"
     return $ BaseUrl sch host port path
   where
@@ -336,3 +336,5 @@ clientErrToServantErr sErr = case sErr of
   UnsupportedContentType{..} -> ServantErr 422 "" responseBody []
   InvalidContentTypeHeader{..} -> ServantErr 415 "" responseBody []
   ConnectionError{..} -> err500 {errBody = "Connection Error" }
+
+{-# ANN module ("HLint: ignore Use newtype instead of data" :: String) #-}

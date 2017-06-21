@@ -75,7 +75,7 @@ instance FromJSON Config where
                     { cfgSocket       = msocket
                     , cfgOtherNodes   = otherNodes
                     , cfgPublicKeys   = pubKeys ++ apubs
-                    , cfgPrivateKeys  = [oldPrivPath] ++ aprivs
+                    , cfgPrivateKeys  = oldPrivPath : aprivs
                     , cfgAlwaysSendTo = apubs
                     , cfgStorage      = storage
                     , cfgIpWhitelist  = ipwl

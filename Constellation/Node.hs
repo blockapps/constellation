@@ -151,7 +151,7 @@ propagatePayload' :: Node
                   -> EncryptedPayload
                   -> [PublicKey]
                   -> IO [Either String Text]
-propagatePayload' Node{..} epl rcpts = do
+propagatePayload' Node{..} epl rcpts =
     mapConcurrently f $ zip rcpts (eplRcptBoxes epl)
   where
     -- TODO: Smarter grouping of requests

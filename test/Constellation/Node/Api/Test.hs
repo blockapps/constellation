@@ -9,7 +9,6 @@ import qualified Data.ByteString.Char8         as BC
 import qualified Data.ByteString.Lazy.Char8    as BLC
 import           Data.IP                       (toHostAddress, toHostAddress6)
 import           Data.Maybe                    (fromJust)
-import qualified Data.Text                     as T
 import           Data.Text.Encoding            (encodeUtf8)
 import           Network.HTTP.Types            (Header, RequestHeaders)
 import           Network.HTTP.Types.Header     (hContentLength)
@@ -21,14 +20,13 @@ import           Text.Read                     (read)
 
 import           Constellation.Enclave.Types   (PublicKey, mkPublicKey)
 import           Constellation.Node            (nodeRefresh)
-import           Constellation.Node.Api        (ApiType (..), Send (..))
-import           Constellation.Node.Types      (Node (..), PartyInfo (..),
+import           Constellation.Node.Api        (Send (..))
+import           Constellation.Node.Types      (Node (..),
                                                 Storage (closeStorage))
 import           Constellation.Util.ByteString (mustB64TextDecodeBs)
 
 import           Constellation.TestUtil        (kvTest, link, setupTestNode,
                                                 testSendPayload)
-import           Constellation.Util.Network    (getUnusedPort)
 
 tests :: TestTree
 tests = testGroup "Constellation.Node.Api"

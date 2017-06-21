@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StrictData        #-}
@@ -11,5 +10,4 @@ defaultMain :: IO ()
 defaultMain = runInputT defaultSettings configure
 
 configure :: MonadIO m => InputT m ()
-configure = do
-    putStrLn "hi"
+configure = putStrLn "hi"

@@ -167,21 +167,21 @@ mustDecodeB64PublicKey :: ByteString -> PublicKey
 mustDecodeB64PublicKey = fromJust . mkPublicKey . mustB64DecodeBs
 
 decodePublicKeys :: ByteString -> [PublicKey]
-decodePublicKeys = (map mustDecodeB64PublicKey) . (BC.split ',')
+decodePublicKeys = map mustDecodeB64PublicKey . BC.split ','
 
 getHeaders :: [HeaderName] -> RequestHeaders -> Either String RequestHeaders
 getHeaders names headers =
     foldl' (\acc name -> case getHeader name headers of
-               Just h  -> (case acc of
+               Just h  -> case acc of
                              Right xs -> Right $ h:xs
-                             err      -> err)
+                             err      -> err
                Nothing -> Left $ "Missing header: " ++ show name
            ) (Right []) names
 
 getHeader :: HeaderName -> RequestHeaders -> Maybe Header
 getHeader hname headers =
-    case (filter (\(header, _) -> header == hname) headers) of
-        (x):_ -> Just x
+    case filter (\(header, _) -> header == hname) headers of
+        x:_ -> Just x
         _     -> Nothing
 
 whitelist :: [String] -> Whitelist
@@ -357,3 +357,5 @@ plForPub pub epl@EncryptedPayload{..} rcpts =
             { eplRcptBoxes = [rcptBox]
             }
         _                -> Nothing
+
+{-# ANN module ("HLint: ignore Use newtype instead of data" :: String) #-}
