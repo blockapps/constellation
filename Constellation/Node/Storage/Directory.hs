@@ -1,28 +1,26 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Node.Storage.Directory where
 
-import ClassyPrelude hiding (delete, hash)
-import Crypto.Hash (Digest, SHA3_512, hash)
-import Data.Binary (encode, decode)
-import Data.ByteArray.Encoding
-    (Base(Base32, Base64), convertToBase, convertFromBase)
-import System.Directory (createDirectoryIfMissing, removeFile, listDirectory)
-import qualified Data.ByteString.Char8 as BC
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.Text.Encoding as TE
+import           ClassyPrelude                 hiding (delete, hash)
+import           Crypto.Hash                   (Digest, SHA3_512, hash)
+import           Data.Binary                   (decode, encode)
+import           Data.ByteArray.Encoding       (Base (Base32, Base64),
+                                                convertFromBase, convertToBase)
+import qualified Data.ByteString.Char8         as BC
+import qualified Data.ByteString.Lazy          as BL
+import qualified Data.Text.Encoding            as TE
+import           System.Directory              (createDirectoryIfMissing,
+                                                listDirectory, removeFile)
 
-import Constellation.Enclave.Payload
-    (EncryptedPayload(EncryptedPayload, eplCt))
-import Constellation.Enclave.Types (PublicKey)
-import Constellation.Node.Types
-    (Storage(Storage, savePayload, loadPayload, deletePayload,
-             traverseStorage, closeStorage))
-import Constellation.Util.Exception (trys)
-import Constellation.Util.Logging (warnf)
+import           Constellation.Enclave.Payload (EncryptedPayload (EncryptedPayload, eplCt))
+import           Constellation.Enclave.Types   (PublicKey)
+import           Constellation.Node.Types      (Storage (Storage, closeStorage, deletePayload, loadPayload, savePayload, traverseStorage))
+import           Constellation.Util.Exception  (trys)
+import           Constellation.Util.Logging    (warnf)
 
 directoryStorage :: FilePath -> IO Storage
 directoryStorage dir = do

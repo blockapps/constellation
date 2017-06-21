@@ -1,13 +1,13 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Util.Either.Test where
 
-import ClassyPrelude
-import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.QuickCheck (testProperty)
+import           ClassyPrelude
+import           Test.Tasty                (TestTree, testGroup)
+import           Test.Tasty.QuickCheck     (testProperty)
 
-import Constellation.Util.Either (fromRight)
+import           Constellation.Util.Either (fromRight)
 
 tests :: TestTree
 tests = testGroup "Util.Either"

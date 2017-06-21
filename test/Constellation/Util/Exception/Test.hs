@@ -1,15 +1,17 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Util.Exception.Test where
 
-import ClassyPrelude hiding (assert)
-import Test.QuickCheck.Monadic (PropertyM, monadicIO, run, assert)
-import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.QuickCheck (testProperty)
-import qualified Control.Exception as E
+import           ClassyPrelude                hiding (assert)
+import qualified Control.Exception            as E
+import           Test.QuickCheck.Monadic      (PropertyM, assert, monadicIO,
+                                               run)
+import           Test.Tasty                   (TestTree, testGroup)
+import           Test.Tasty.QuickCheck        (testProperty)
 
-import Constellation.Util.Exception (trys, someExceptionToStringEither)
+import           Constellation.Util.Exception (someExceptionToStringEither,
+                                               trys)
 
 data MockException = MockException String
                    deriving Show

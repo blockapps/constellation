@@ -1,9 +1,9 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Enclave.Main where
 
-import ClassyPrelude
+import           ClassyPrelude
 
 defaultMain :: IO ()
 defaultMain = putStrLn "The remote Enclave is not yet supported"

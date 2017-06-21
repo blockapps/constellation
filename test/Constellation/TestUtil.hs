@@ -1,30 +1,48 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.TestUtil where
 
-import ClassyPrelude
-import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, (@?=), testCase)
-import qualified Data.HashMap.Strict as HM
+import           ClassyPrelude
 
-import Constellation.Enclave
-    (newEnclave', enclaveEncryptPayload, enclaveDecryptPayload)
-import Constellation.Enclave.Key (newKeyPair)
-import Constellation.Enclave.Types (PublicKey)
-import Constellation.Node
-    (newNode, addParty, sendPayload, receivePayload)
-import Constellation.Node.Storage.BerkeleyDb (berkeleyDbStorage)
-import Constellation.Node.Types
-    ( Node(Node, nodePi), PartyInfo(piUrl, piRcpts)
-    , Crypt(Crypt, encryptPayload, decryptPayload)
-    )
-import Constellation.Util.Network (getUnusedPort)
-import Constellation.Util.Text (tformat)
+import           Constellation.Node.Api                as NodeApi
+import qualified Constellation.Node.ServantApi         as SApi
+import           Control.Concurrent                    (forkIO)
+import qualified Data.HashMap.Strict                   as HM
+import           Network.HTTP.Client                   (newManager)
+import           Network.HTTP.Client.TLS               (tlsManagerSettings)
+import qualified Network.Wai.Handler.Warp              as Warp
+import           Servant.Client
+import           Test.Tasty                            (TestTree, testGroup)
+import           Test.Tasty.HUnit                      (Assertion, testCase,
+                                                        (@?=))
 
-setupTestNode :: FilePath -> String -> IO (TVar Node, Int)
+import           Constellation.Enclave                 (enclaveDecryptPayload,
+                                                        enclaveEncryptPayload,
+                                                        newEnclave')
+import           Constellation.Enclave.Key             (newKeyPair)
+import           Constellation.Enclave.Types           (PublicKey)
+import           Constellation.Node                    (addParty, newNode,
+                                                        receivePayload,
+                                                        sendPayload)
+import           Constellation.Node.Storage.BerkeleyDb (berkeleyDbStorage)
+import           Constellation.Node.Types              (Crypt (Crypt, decryptPayload, encryptPayload),
+                                                        Node (Node, nodePi),
+                                                        PartyInfo (piRcpts, piUrl))
+import           Constellation.Util.Network            (getUnusedPort)
+import           Constellation.Util.Text               (tformat)
+
+setupTestNode :: FilePath -> String -> IO (ThreadId, ThreadId, TVar Node)
 setupTestNode d name = do
+    -- setup proxy node
+    pport    <- getUnusedPort
+    nport    <- getUnusedPort
+    mgr <- newManager tlsManagerSettings
+    let burl = BaseUrl Http "localhost" nport ""
+        env = ClientEnv mgr burl
+    pid <- forkIO $ SApi.initProxyApp' env pport
+    -- setup node
     kp1@(pub1, _) <- newKeyPair
     kp2@(pub2, _) <- newKeyPair
     e             <- newEnclave' [kp1, kp2]
@@ -33,11 +51,11 @@ setupTestNode d name = do
             , decryptPayload = enclaveDecryptPayload e
             }
     storage <- berkeleyDbStorage $ d </> name
-    port    <- getUnusedPort
     nvar    <- newTVarIO =<<
-        newNode crypt storage (tformat "http://localhost:{}/" [port])
+        newNode crypt storage (tformat "http://localhost:{}/" [pport])
         [pub1, pub2] [] []
-    return (nvar, port)
+    nid <- forkIO $ Warp.run nport $ NodeApi.app Nothing Private nvar
+    return (nid, pid, nvar)
 
 link :: TVar Node -> TVar Node -> STM ()
 link nvar onvar = readTVar onvar >>= \onode ->
@@ -51,8 +69,8 @@ testSendPayload nvar onvar = do
         to   = firstPublicKey onode
     es <- sendPayload node pl from [to]
     let key = case partitionEithers es of
-            ([], [k]) -> k
-            _         -> error "testSendPayload: Invalid response from sendPayload"
+                ([], [k]) -> k
+                _ -> error "testSendPayload: Invalid response from sendPayload"
     -- Verify that the recipient node can retrieve and decrypt the payload
     epl <- receivePayload onode key to
     case epl of

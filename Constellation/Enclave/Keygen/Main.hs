@@ -1,19 +1,20 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Enclave.Keygen.Main where
 
-import ClassyPrelude hiding (getArgs, writeFile)
-import System.Console.Haskeline (runInputT, defaultSettings, getPassword)
-import System.Environment (getArgs, getProgName)
-import Text.Printf (printf)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
+import           ClassyPrelude             hiding (getArgs, writeFile)
+import qualified Data.ByteString           as B
+import qualified Data.ByteString.Lazy      as BL
+import           System.Console.Haskeline  (defaultSettings, getPassword,
+                                            runInputT)
+import           System.Environment        (getArgs, getProgName)
+import           Text.Printf               (printf)
 
-import Constellation.Enclave.Key
-    (newKeyPair, b64EncodePublicKey, jsonEncodePrivateKey)
-import Constellation.Util.Text (tformat)
+import           Constellation.Enclave.Key (b64EncodePublicKey,
+                                            jsonEncodePrivateKey, newKeyPair)
+import           Constellation.Util.Text   (tformat)
 
 defaultMain :: IO ()
 defaultMain = getArgs >>= \case

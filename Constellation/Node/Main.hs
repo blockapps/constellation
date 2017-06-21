@@ -1,43 +1,47 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Node.Main where
 
-import ClassyPrelude hiding (getArgs, log)
-import Control.Concurrent (forkIO)
-import Control.Logging
-    ( LogLevel(LevelDebug, LevelInfo, LevelWarn, LevelError)
-    , setLogLevel, withStderrLogging, log', errorL'
-    )
-import Data.Text.Format (Shown(Shown))
-import GHC.Conc (getNumProcessors)
-import Network.Socket
-    ( Family(AF_UNIX), SocketType(Stream), SockAddr(SockAddrUnix)
-    , socket, bind, listen, maxListenQueue, close
-    )
-import System.Directory (doesFileExist, removeFile)
-import System.Environment (getArgs)
-import qualified Data.Text as T
-import qualified Network.Wai.Handler.Warp as Warp
+import           ClassyPrelude                         hiding (getArgs, log)
+import           Control.Concurrent                    (forkIO)
+import           Control.Logging                       (LogLevel (LevelDebug, LevelError, LevelInfo, LevelWarn),
+                                                        errorL', log',
+                                                        setLogLevel,
+                                                        withStderrLogging)
+import qualified Data.Text                             as T
+import           Data.Text.Format                      (Shown (Shown))
+import           GHC.Conc                              (getNumProcessors)
+import           Network.Socket                        (Family (AF_UNIX),
+                                                        SockAddr (SockAddrUnix),
+                                                        SocketType (Stream),
+                                                        bind, close, listen,
+                                                        maxListenQueue, socket)
+import qualified Network.Wai.Handler.Warp              as Warp
+import           System.Directory                      (doesFileExist,
+                                                        removeFile)
+import           System.Environment                    (getArgs)
 
-import Constellation.Enclave
-    (newEnclave', enclaveEncryptPayload, enclaveDecryptPayload)
-import Constellation.Enclave.Key (mustLoadKeyPairs, mustLoadPublicKeys)
-import Constellation.Enclave.Keygen.Main (generateKeyPair)
-import Constellation.Node (newNode, runNode)
-import Constellation.Node.Storage.BerkeleyDb (berkeleyDbStorage)
-import Constellation.Node.Storage.Directory (directoryStorage)
+import           Constellation.Enclave                 (enclaveDecryptPayload,
+                                                        enclaveEncryptPayload,
+                                                        newEnclave')
+import           Constellation.Enclave.Key             (mustLoadKeyPairs,
+                                                        mustLoadPublicKeys)
+import           Constellation.Enclave.Keygen.Main     (generateKeyPair)
+import           Constellation.Node                    (newNode, runNode)
+import           Constellation.Node.Storage.BerkeleyDb (berkeleyDbStorage)
+import           Constellation.Node.Storage.Directory  (directoryStorage)
 -- import Constellation.Node.Storage.Memory (memoryStorage)
-import Constellation.Node.Types
-    ( Node(nodeStorage)
-    , Crypt(Crypt, encryptPayload, decryptPayload)
-    , Storage(closeStorage)
-    )
-import Constellation.Node.Config (Config(..), extractConfig)
-import Constellation.Util.AtExit (registerAtExit, withAtExit)
-import Constellation.Util.Logging (debugf', logf')
-import qualified Constellation.Node.Api as NodeApi
+import qualified Constellation.Node.Api                as NodeApi
+import           Constellation.Node.Config             (Config (..),
+                                                        extractConfig)
+import           Constellation.Node.Types              (Crypt (Crypt, decryptPayload, encryptPayload),
+                                                        Node (nodeStorage),
+                                                        Storage (closeStorage))
+import           Constellation.Util.AtExit             (registerAtExit,
+                                                        withAtExit)
+import           Constellation.Util.Logging            (debugf', logf')
 
 version :: Text
 version = "0.1.0"

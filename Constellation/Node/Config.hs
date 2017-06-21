@@ -1,26 +1,27 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Node.Config where
 
-import ClassyPrelude
-import Data.Aeson
-    (FromJSON(parseJSON), Value(Object), (.:?), (.!=), toJSON, fromJSON)
-import Data.Default (Default, def)
-import Data.List.Split (splitOn)
-import System.Console.GetOpt
-    ( OptDescr(Option), ArgOrder(Permute), ArgDescr(NoArg, OptArg)
-    , getOpt, usageInfo
-    )
-import Text.Read (read)
-import Text.Toml (parseTomlDoc)
-import qualified Data.Aeson as AE
-import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
+import           ClassyPrelude
+import           Data.Aeson                   (FromJSON (parseJSON),
+                                               Value (Object), fromJSON, toJSON,
+                                               (.!=), (.:?))
+import qualified Data.Aeson                   as AE
+import           Data.Default                 (Default, def)
+import           Data.List.Split              (splitOn)
+import qualified Data.Text                    as T
+import qualified Data.Text.IO                 as TIO
+import           System.Console.GetOpt        (ArgDescr (NoArg, OptArg),
+                                               ArgOrder (Permute),
+                                               OptDescr (Option), getOpt,
+                                               usageInfo)
+import           Text.Read                    (read)
+import           Text.Toml                    (parseTomlDoc)
 
-import Constellation.Util.Exception (trys)
-import Constellation.Util.String (trimBoth)
+import           Constellation.Util.Exception (trys)
+import           Constellation.Util.String    (trimBoth)
 
 data Config = Config
     { cfgUrl              :: Text

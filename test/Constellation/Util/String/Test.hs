@@ -2,12 +2,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Constellation.Util.String.Test where
 
-import ClassyPrelude
-import Data.Char (isSpace)
-import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.QuickCheck (testProperty)
+import           ClassyPrelude
+import           Data.Char                 (isSpace)
+import           Test.Tasty                (TestTree, testGroup)
+import           Test.Tasty.QuickCheck     (testProperty)
 
-import Constellation.Util.String (trimLeft, trimRight, trimBoth)
+import           Constellation.Util.String (trimBoth, trimLeft, trimRight)
 
 tests :: TestTree
 tests = testGroup "Util.String"

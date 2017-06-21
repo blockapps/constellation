@@ -1,23 +1,28 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Util.Lockable where
 
-import ClassyPrelude hiding (hash)
-import Crypto.Error (CryptoFailable(..))
-import Crypto.KDF.Argon2 (Options(..), Variant(..), Version(..), hash)
-import Data.Aeson (ToJSON(toJSON), FromJSON(parseJSON), (.:), (.:?), (.=), object)
-import System.Console.Haskeline (runInputT, defaultSettings, getPassword)
-import System.Entropy (getEntropy)
-import qualified Data.Aeson as AE
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
-import qualified Crypto.Saltine.Class as S
+import           ClassyPrelude                 hiding (hash)
+import           Crypto.Error                  (CryptoFailable (..))
+import           Crypto.KDF.Argon2             (Options (..), Variant (..),
+                                                Version (..), hash)
+import qualified Crypto.Saltine.Class          as S
 import qualified Crypto.Saltine.Core.SecretBox as SBox
+import           Data.Aeson                    (FromJSON (parseJSON),
+                                                ToJSON (toJSON), object, (.:),
+                                                (.:?), (.=))
+import qualified Data.Aeson                    as AE
+import qualified Data.Text                     as T
+import qualified Data.Text.Encoding            as TE
+import           System.Console.Haskeline      (defaultSettings, getPassword,
+                                                runInputT)
+import           System.Entropy                (getEntropy)
 
-import Constellation.Util.ByteString (b64TextEncodeBs, b64TextDecodeBs)
+import           Constellation.Util.ByteString (b64TextDecodeBs,
+                                                b64TextEncodeBs)
 
 defaultArgonOptions :: ArgonOptions
 defaultArgonOptions = ArgonOptions Options

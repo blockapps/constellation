@@ -1,8 +1,8 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 module Constellation.Util.String where
 
-import ClassyPrelude
-import Data.Char (isSpace)
+import           ClassyPrelude
+import           Data.Char     (isSpace)
 
 trimLeft :: String -> String
 trimLeft = dropWhile isSpace

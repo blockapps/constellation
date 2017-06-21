@@ -1,24 +1,23 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Node.Storage.LevelDb where
 
-import ClassyPrelude hiding (delete, hash)
-import Control.Monad.Fix (fix)
-import Crypto.Hash (Digest, SHA3_512, hash)
-import Data.Binary (encode, decode)
-import Data.ByteArray.Encoding (Base(Base64), convertToBase)
-import Data.Default (def)
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.Text.Encoding as TE
-import qualified Database.LevelDB.Base as L
-import qualified Database.LevelDB.Internal as LI
+import           ClassyPrelude                 hiding (delete, hash)
+import           Control.Monad.Fix             (fix)
+import           Crypto.Hash                   (Digest, SHA3_512, hash)
+import           Data.Binary                   (decode, encode)
+import           Data.ByteArray.Encoding       (Base (Base64), convertToBase)
+import qualified Data.ByteString.Lazy          as BL
+import           Data.Default                  (def)
+import qualified Data.Text.Encoding            as TE
+import qualified Database.LevelDB.Base         as L
+import qualified Database.LevelDB.Internal     as LI
 
-import Constellation.Enclave.Payload
-    (EncryptedPayload(EncryptedPayload, eplCt))
-import Constellation.Enclave.Types (PublicKey)
-import Constellation.Node.Types (Storage(..))
+import           Constellation.Enclave.Payload (EncryptedPayload (EncryptedPayload, eplCt))
+import           Constellation.Enclave.Types   (PublicKey)
+import           Constellation.Node.Types      (Storage (..))
 
 levelDbStorage :: FilePath -> IO Storage
 levelDbStorage fpath = do

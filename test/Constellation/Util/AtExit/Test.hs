@@ -1,13 +1,13 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Util.AtExit.Test where
 
-import ClassyPrelude
-import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit ((@?=), testCase)
+import           ClassyPrelude
+import           Test.Tasty                (TestTree, testGroup)
+import           Test.Tasty.HUnit          (testCase, (@?=))
 
-import Constellation.Util.AtExit (registerAtExit, withAtExit)
+import           Constellation.Util.AtExit (registerAtExit, withAtExit)
 
 tests :: TestTree
 tests = testGroup "Util.AtExit"

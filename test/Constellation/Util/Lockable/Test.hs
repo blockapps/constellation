@@ -1,20 +1,21 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Util.Lockable.Test where
 
-import ClassyPrelude
-import Crypto.KDF.Argon2 (Options(..), Variant(..), Version(..))
-import Data.Aeson (encode, decode)
-import Data.Maybe (fromJust)
-import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit ((@?=), testCase, assertFailure)
-import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Lazy.Encoding as TLE
+import           ClassyPrelude
+import           Crypto.KDF.Argon2           (Options (..), Variant (..),
+                                              Version (..))
+import           Data.Aeson                  (decode, encode)
+import           Data.Maybe                  (fromJust)
+import qualified Data.Text.Lazy              as TL
+import qualified Data.Text.Lazy.Encoding     as TLE
+import           Test.Tasty                  (TestTree, testGroup)
+import           Test.Tasty.HUnit            (assertFailure, testCase, (@?=))
 
-import Constellation.TestUtil (kvTest)
-import Constellation.Util.Lockable
-    (ArgonOptions (ArgonOptions), defaultArgonOptions, unlock)
+import           Constellation.TestUtil      (kvTest)
+import           Constellation.Util.Lockable (ArgonOptions (ArgonOptions),
+                                              defaultArgonOptions, unlock)
 
 tests :: TestTree
 tests = testGroup "Util.Lockable"
@@ -43,7 +44,7 @@ argonOptionsKvs =
 testToJsonFromArgonOptions :: TestTree
 testToJsonFromArgonOptions = kvTest "toJsonFromArgonOptions"
     argonOptionsKvs $ TL.toStrict . TLE.decodeUtf8 . encode
-  
+
 testFromJsonToArgonOptions :: TestTree
 testFromJsonToArgonOptions = kvTest "fromJsonToArgonOptions"
     (map justKvsSwap argonOptionsKvs) $ decode . TLE.encodeUtf8 . TL.fromStrict
@@ -52,7 +53,7 @@ testFromJsonToArgonOptionsNoVersion :: TestTree
 testFromJsonToArgonOptionsNoVersion = testCase "testFromJsonToArgonOptionsNoVersion" $
     decode "{\"variant\":\"i\",\"memory\":1048576,\"iterations\":10,\"parallelism\":4}"
     @?= Just defaultArgonOptions
-    
+
 justKvsSwap :: (a, b) -> (b, Maybe a)
 justKvsSwap (a, b) = (b, Just a)
 

@@ -1,12 +1,12 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Util.Logging.Test where
 
-import ClassyPrelude
-import Test.Tasty (TestTree)
+import           ClassyPrelude
+import           Test.Tasty              (TestTree)
 
-import Constellation.Util.Text (tformat)
+import           Constellation.Util.Text (tformat)
 
 tests :: TestTree
 tests = testGroup "Util.Logging" []

@@ -1,13 +1,14 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Util.ByteString where
 
-import ClassyPrelude
-import Data.ByteArray.Encoding (Base(Base64), convertToBase, convertFromBase)
-import qualified Data.Text.Encoding as TE
+import           ClassyPrelude
+import           Data.ByteArray.Encoding   (Base (Base64), convertFromBase,
+                                            convertToBase)
+import qualified Data.Text.Encoding        as TE
 
-import Constellation.Util.Either (fromRight)
+import           Constellation.Util.Either (fromRight)
 
 b64TextEncodeBs :: ByteString -> Text
 b64TextEncodeBs = TE.decodeUtf8 . convertToBase Base64

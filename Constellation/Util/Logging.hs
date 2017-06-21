@@ -1,14 +1,14 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Util.Logging where
 
-import ClassyPrelude hiding (log)
-import Control.Logging (log, log', warn, warn', debug, debug')
-import qualified Data.Text.Format as TF
+import           ClassyPrelude           hiding (log)
+import           Control.Logging         (debug, debug', log, log', warn, warn')
+import qualified Data.Text.Format        as TF
 import qualified Data.Text.Format.Params as TFP
 
-import Constellation.Util.Text (tformat)
+import           Constellation.Util.Text (tformat)
 
 logf, logf', warnf, warnf', debugf, debugf' :: TFP.Params ps => TF.Format -> ps -> IO ()
 logf    fmt ps = log    $ tformat fmt ps

@@ -1,29 +1,31 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE StrictData        #-}
+{-# LANGUAGE TypeApplications  #-}
 module Constellation.Node where
 
-import ClassyPrelude
-import Data.Binary (encode, decode)
-import Network.HTTP.Conduit ( RequestBody(RequestBodyLBS)
-                            , newManager, managerConnCount, tlsManagerSettings
-                            , parseRequest, httpLbs, method, requestBody
-                            , responseBody
-                            )
-import System.Random (StdGen, newStdGen, randomR)
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet as HS
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
+import           ClassyPrelude
+import qualified Data.Aeson                    as AE
+import           Network.HTTP.Conduit          (RequestBody (RequestBodyLBS),
+                                                httpLbs, managerConnCount,
+                                                method, newManager,
+                                                parseRequest, requestBody,
+                                                requestHeaders, responseBody,
+                                                tlsManagerSettings)
+import           Network.HTTP.Types.Header     (hContentType)
 
-import Constellation.Enclave.Payload
-    (EncryptedPayload(eplSender, eplRcptBoxes), eplRcptBoxes)
-import Constellation.Enclave.Types (PublicKey(PublicKey, unPublicKey))
-import Constellation.Node.Types
-import Constellation.Util.Exception (trys)
-import Constellation.Util.Logging (logf)
+import qualified Data.HashMap.Strict           as HM
+import qualified Data.HashSet                  as HS
+import qualified Data.Text                     as T
+import           System.Random                 (StdGen, newStdGen, randomR)
+
+import           Constellation.Enclave.Payload (EncryptedPayload (eplRcptBoxes, eplSender),
+                                                eplRcptBoxes)
+import           Constellation.Enclave.Types   (PublicKey (PublicKey, unPublicKey))
+import           Constellation.Node.Types
+import           Constellation.Util.Logging    (logf)
+
 
 newNode :: Crypt
         -> Storage
@@ -88,17 +90,18 @@ nodeRefresh nvar = do
     atomically $ mergePartyInfos nvar pis
 
 getRemotePartyInfo :: TVar Node -> Text -> IO (Either String PartyInfo)
-getRemotePartyInfo nvar url = trys $ do
+getRemotePartyInfo nvar url = do
     logf "Starting synchronization with {}" [url]
     Node{..} <- atomically $ readTVar nvar
     req      <- parseRequest $ T.unpack url ++ "partyinfo"
     let req' = req
             { method      = "POST"
-            , requestBody = RequestBodyLBS $ encode nodePi
+            , requestHeaders = [(hContentType, "application/json; charset=utf-8")]
+            , requestBody = RequestBodyLBS $ AE.encode nodePi
             }
     res <- httpLbs req' nodeManager
     logf "Finished synchronization with {}" [url]
-    return $ decode $ responseBody res
+    return . AE.eitherDecode @PartyInfo . responseBody $ res
 
 mergePartyInfos :: TVar Node -> [PartyInfo] -> STM ()
 mergePartyInfos nvar pinfos = modifyTVar nvar $ \node ->
@@ -148,22 +151,21 @@ propagatePayload' :: Node
                   -> EncryptedPayload
                   -> [PublicKey]
                   -> IO [Either String Text]
-propagatePayload' Node{..} epl rcpts =
+propagatePayload' Node{..} epl rcpts = do
     mapConcurrently f $ zip rcpts (eplRcptBoxes epl)
   where
     -- TODO: Smarter grouping of requests
-    f (pub, rcptBox) = trys $ case HM.lookup pub (piRcpts nodePi) of
+    f (pub, rcptBox) = case HM.lookup pub (piRcpts nodePi) of
         Nothing  -> error "Unknown recipient"
         Just url -> do
             req <- parseRequest $ T.unpack url ++ "push"
             let req' = req
                     { method      = "POST"
-                    , requestBody = RequestBodyLBS $ encode epl
-                          { eplRcptBoxes = [rcptBox]
-                          }
+                    , requestHeaders     = [(hContentType, "application/json; charset=utf-8")]
+                    , requestBody = RequestBodyLBS . AE.encode $ epl { eplRcptBoxes = [rcptBox] }
                     }
             res <- httpLbs req' nodeManager
-            return $ TE.decodeUtf8 $ BL.toStrict $ responseBody res
+            return . AE.eitherDecode' . responseBody $ res
 
 receivePayload :: Node -> Text -> PublicKey -> IO (Either String ByteString)
 receivePayload Node{..} key to = do

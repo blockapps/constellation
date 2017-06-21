@@ -1,10 +1,10 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Util.Exception where
 
-import ClassyPrelude
-import Control.Exception (try)
+import           ClassyPrelude
+import           Control.Exception (try)
 
 trys :: IO a -> IO (Either String a)
 trys f = someExceptionToStringEither <$> Control.Exception.try f

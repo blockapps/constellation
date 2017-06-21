@@ -1,14 +1,15 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Util.ByteString.Test where
 
-import ClassyPrelude
-import Test.Tasty (TestTree, testGroup)
-import qualified Data.Text.Encoding as TE
+import           ClassyPrelude
+import qualified Data.Text.Encoding            as TE
+import           Test.Tasty                    (TestTree, testGroup)
 
-import Constellation.TestUtil (kvTest)
-import Constellation.Util.ByteString (mustB64DecodeBs, mustB64TextDecodeBs)
+import           Constellation.TestUtil        (kvTest)
+import           Constellation.Util.ByteString (mustB64DecodeBs,
+                                                mustB64TextDecodeBs)
 
 tests :: TestTree
 tests = testGroup "Util.ByteString"

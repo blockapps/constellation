@@ -1,42 +1,45 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE StrictData        #-}
+{-# LANGUAGE TypeApplications  #-}
 module Constellation.Node.Api where
 
-import ClassyPrelude hiding (delete, log)
-import Control.Monad (void)
-import Data.Aeson
-    (FromJSON(parseJSON), ToJSON(toJSON), Value(Object), (.:), (.=), object)
-import Data.Binary (encode, decodeOrFail)
-import Data.ByteArray.Encoding (Base(Base64), convertToBase)
-import Data.HashMap.Strict ((!))
-import Data.IP (IP(IPv4, IPv6), toHostAddress, toHostAddress6)
-import Data.Maybe (fromJust)
-import Data.Set (Set)
-import Data.Text.Format (Shown(Shown))
-import Network.HTTP.Types (Header, HeaderName, RequestHeaders)
-import Network.HTTP.Types.Header (hContentLength)
-import Network.Socket
-    (SockAddr(SockAddrInet, SockAddrInet6), HostAddress, HostAddress6)
-import Text.Read (read)
-import qualified Data.Aeson as AE
-import qualified Data.ByteString.Char8 as BC
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.HashMap.Strict as HM
-import qualified Data.Set as Set
-import qualified Data.Text.Encoding as TE
-import qualified Network.Wai as Wai
+import           ClassyPrelude                 hiding (delete, log)
+import           Control.Monad                 (void)
+import           Data.Aeson                    (FromJSON (parseJSON),
+                                                ToJSON (toJSON), Value (Object),
+                                                object, (.:), (.=))
+import qualified Data.Aeson                    as AE
+import           Data.ByteArray.Encoding       (Base (Base64), convertToBase)
+import qualified Data.ByteString.Char8         as BC
+import qualified Data.ByteString.Lazy          as BL
+import           Data.HashMap.Strict           ((!))
+import qualified Data.HashMap.Strict           as HM
+import           Data.IP                       (IP (IPv4, IPv6), toHostAddress,
+                                                toHostAddress6)
+import           Data.Maybe                    (fromJust)
+import           Data.Set                      (Set)
+import qualified Data.Set                      as Set
+import qualified Data.Text.Encoding            as TE
+import           Data.Text.Format              (Shown (Shown))
+import           Network.HTTP.Types            (Header, HeaderName,
+                                                RequestHeaders)
+import           Network.HTTP.Types.Header     (hContentLength)
+import           Network.Socket                (HostAddress, HostAddress6, SockAddr (SockAddrInet, SockAddrInet6))
+import qualified Network.Wai                   as Wai
+import           Text.Read                     (read)
 
-import Constellation.Enclave.Payload
-    (EncryptedPayload(EncryptedPayload, eplRcptBoxes), eplRcptBoxes)
-import Constellation.Enclave.Types (PublicKey, mkPublicKey)
-import Constellation.Node
-import Constellation.Node.Types
-import Constellation.Util.ByteString (mustB64DecodeBs, mustB64TextDecodeBs)
-import Constellation.Util.Logging (debugf, warnf)
-import Constellation.Util.Wai
-    (ok, badRequest, unauthorized, internalServerError)
+import           Constellation.Enclave.Payload (EncryptedPayload (EncryptedPayload, eplRcptBoxes),
+                                                eplRcptBoxes)
+import           Constellation.Enclave.Types   (PublicKey, mkPublicKey)
+import           Constellation.Node
+import           Constellation.Node.Types
+import           Constellation.Util.ByteString (mustB64DecodeBs,
+                                                mustB64TextDecodeBs)
+import           Constellation.Util.Logging    (debugf, warnf)
+import           Constellation.Util.Wai        (badRequest, internalServerError,
+                                                ok, unauthorized)
 
 data Send = Send
     { sreqPayload :: ByteString
@@ -250,13 +253,9 @@ parseRequest ["delete"]     b _ = ApiDelete <$> AE.eitherDecode' b
 -----
 -- Node to node
 -----
-parseRequest ["push"]       b _ = case decodeOrFail b of
-    Left  (_, _, err)  -> Left err
-    Right (_, _, preq) -> Right $ ApiPush preq
+parseRequest ["push"]       b _ = ApiPush <$> AE.eitherDecode' b
 parseRequest ["resend"]     b _ = ApiResend <$> AE.eitherDecode' b
-parseRequest ["partyinfo"]  b _ = case decodeOrFail b of
-    Left  (_, _, err)   -> Left err
-    Right (_, _, pireq) -> Right $ ApiPartyInfo pireq
+parseRequest ["partyinfo"]  b _ = ApiPartyInfo <$> AE.eitherDecode b
 -----
 -- Miscellaneous
 -----
@@ -288,12 +287,12 @@ response :: ApiResponse -> BL.ByteString
 response (ApiSendR sres)                        = AE.encode sres
 response (ApiReceiveR rres)                     = AE.encode rres
 response (ApiReceiveRawR ReceiveResponse{..})   = BL.fromStrict rresPayload
-response (ApiDeleteR DeleteResponse)            = ""
-response (ApiPushR k)                           = BL.fromStrict $ TE.encodeUtf8 k
-response (ApiResendR (ResendIndividualRes epl)) = encode epl
-response (ApiResendR ResentAll)                 = ""
-response (ApiPartyInfoR npi)                    = encode npi
-response ApiUpcheckR                            = "I'm up!"
+response (ApiDeleteR DeleteResponse)            = AE.encode @String ""
+response (ApiPushR k)                           = AE.encode k
+response (ApiResendR (ResendIndividualRes epl)) = AE.encode epl
+response (ApiResendR ResentAll)                 = AE.encode @String ""
+response (ApiPartyInfoR npi)                    = AE.encode npi
+response ApiUpcheckR                            = AE.encode @String "I'm up!"
 
 send :: Node -> Send -> IO (Either String SendResponse)
 send node Send{..} = do

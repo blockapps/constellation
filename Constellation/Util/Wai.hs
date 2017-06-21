@@ -1,18 +1,18 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Util.Wai where
 
-import ClassyPrelude
+import           ClassyPrelude
 
-import Network.HTTP.Types ( ok200, badRequest400, unauthorized401, notFound404
-                          , internalServerError500
-                          )
 import qualified Data.ByteString.Lazy as BL
-import qualified Network.Wai as Wai
+import           Network.HTTP.Types   (badRequest400, hContentType,
+                                       internalServerError500, notFound404,
+                                       ok200, unauthorized401)
+import qualified Network.Wai          as Wai
 
 ok :: BL.ByteString -> Wai.Response
-ok = Wai.responseLBS ok200 []
+ok = Wai.responseLBS ok200 [(hContentType, "application/json; charset=utf-8")]
 
 ok' :: ByteString -> Wai.Response
 ok' = ok . BL.fromStrict

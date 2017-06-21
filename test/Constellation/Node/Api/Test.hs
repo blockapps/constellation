@@ -1,37 +1,34 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Node.Api.Test where
 
-import ClassyPrelude hiding (encodeUtf8)
-import Control.Concurrent (forkIO)
-import Data.Maybe (fromJust)
-import Data.IP (toHostAddress, toHostAddress6)
-import Data.Text.Encoding (encodeUtf8)
-import Network.Socket (SockAddr(SockAddrInet, SockAddrInet6, SockAddrUnix, SockAddrCan))
-import Network.HTTP.Types (Header, RequestHeaders)
-import Network.HTTP.Types.Header (hContentLength)
-import System.IO.Temp (withSystemTempDirectory)
-import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit ((@?=), testCase, testCaseSteps)
-import Text.Read (read)
-import qualified Data.ByteString.Char8 as BC
-import qualified Data.ByteString.Lazy.Char8 as BLC
-import qualified Network.Wai.Handler.Warp as Warp
-import Servant.Client
-import Network.HTTP.Client (newManager)
-import Network.HTTP.Client.TLS (tlsManagerSettings)
+import           ClassyPrelude                 hiding (encodeUtf8)
+import           Constellation.Node.Api        as NodeApi
+import qualified Data.ByteString.Char8         as BC
+import qualified Data.ByteString.Lazy.Char8    as BLC
+import           Data.IP                       (toHostAddress, toHostAddress6)
+import           Data.Maybe                    (fromJust)
+import qualified Data.Text                     as T
+import           Data.Text.Encoding            (encodeUtf8)
+import           Network.HTTP.Types            (Header, RequestHeaders)
+import           Network.HTTP.Types.Header     (hContentLength)
+import           Network.Socket                (SockAddr (SockAddrCan, SockAddrInet, SockAddrInet6, SockAddrUnix))
+import           System.IO.Temp                (withSystemTempDirectory)
+import           Test.Tasty                    (TestTree, testGroup)
+import           Test.Tasty.HUnit              (testCase, testCaseSteps, (@?=))
+import           Text.Read                     (read)
 
-import Constellation.Enclave.Types (PublicKey, mkPublicKey)
-import Constellation.Node (nodeRefresh)
-import Constellation.Node.Api (ApiType(..), Send(..))
-import Constellation.Node.Types (Node(nodeStorage), Storage(closeStorage))
-import Constellation.Util.ByteString (mustB64TextDecodeBs)
-import qualified Constellation.Node.Api as NodeApi
+import           Constellation.Enclave.Types   (PublicKey, mkPublicKey)
+import           Constellation.Node            (nodeRefresh)
+import           Constellation.Node.Api        (ApiType (..), Send (..))
+import           Constellation.Node.Types      (Node (..), PartyInfo (..),
+                                                Storage (closeStorage))
+import           Constellation.Util.ByteString (mustB64TextDecodeBs)
 
-import Constellation.Util.Network (getUnusedPort)
-import Constellation.TestUtil (kvTest, setupTestNode, link, testSendPayload)
-import qualified Constellation.Node.ServantApi as SApi
+import           Constellation.TestUtil        (kvTest, link, setupTestNode,
+                                                testSendPayload)
+import           Constellation.Util.Network    (getUnusedPort)
 
 tests :: TestTree
 tests = testGroup "Constellation.Node.Api"
@@ -63,12 +60,9 @@ testSendAndReceivePayload :: TestTree
 testSendAndReceivePayload = testCaseSteps "sendAndReceivePayload" $ \step ->
     withSystemTempDirectory "constellation-test-XXX" $ \d -> do
         step "Setting up nodes"
-        (node1Var, port1) <- setupTestNode d "node1"
-        (node2Var, port2) <- setupTestNode d "node2"
-        (node3Var, port3) <- setupTestNode d "node3"
-        (nid1,pid1) <- proxyNode (node1Var, port1)
-        (nid2,pid2) <- proxyNode (node2Var, port2)
-        (nid3,pid3) <- proxyNode (node3Var, port3)
+        (nid1,pid1,node1Var) <- setupTestNode d "node1"
+        (nid2,pid2,node2Var) <- setupTestNode d "node2"
+        (nid3,pid3,node3Var) <- setupTestNode d "node3"
 
         step "Linking nodes"
         atomically $ do
@@ -99,15 +93,6 @@ testSendAndReceivePayload = testCaseSteps "sendAndReceivePayload" $ \step ->
         nodes <- atomically $ mapM readTVar [node1Var, node2Var, node3Var]
         mapM_ (closeStorage . nodeStorage) nodes
 
-proxyNode :: (TVar Node, Int) -> IO (ThreadId, ThreadId)
-proxyNode (node, nodePort) = do
-  proxyPort <- getUnusedPort
-  mgr <- newManager tlsManagerSettings
-  let burl = BaseUrl Https "localhost" nodePort ""
-      env = ClientEnv mgr burl
-  nid <- forkIO $ Warp.run nodePort $ NodeApi.app Nothing Private node
-  pid <- forkIO $ SApi.initProxyApp' env proxyPort
-  return (nid, pid)
 
 header1 :: Header
 header1 = ("h1", BC.pack "payload1")

@@ -1,26 +1,23 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Node.Storage.BerkeleyDb where
 
-import ClassyPrelude hiding (delete, hash)
-import Control.Logging (warn, warnS)
-import Crypto.Hash (Digest, SHA3_512, hash)
-import Data.Binary (encode, decode)
-import Data.ByteArray.Encoding (Base(Base64), convertToBase)
-import Database.Berkeley.Db
-import System.Directory (createDirectoryIfMissing)
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
+import           ClassyPrelude                 hiding (delete, hash)
+import           Control.Logging               (warn, warnS)
+import           Crypto.Hash                   (Digest, SHA3_512, hash)
+import           Data.Binary                   (decode, encode)
+import           Data.ByteArray.Encoding       (Base (Base64), convertToBase)
+import qualified Data.ByteString.Lazy          as BL
+import qualified Data.Text                     as T
+import qualified Data.Text.Encoding            as TE
+import           Database.Berkeley.Db
+import           System.Directory              (createDirectoryIfMissing)
 
-import Constellation.Enclave.Payload
-    (EncryptedPayload(EncryptedPayload, eplCt))
-import Constellation.Enclave.Types (PublicKey)
-import Constellation.Node.Types
-    (Storage(Storage, savePayload, loadPayload, deletePayload,
-             traverseStorage, closeStorage))
+import           Constellation.Enclave.Payload (EncryptedPayload (EncryptedPayload, eplCt))
+import           Constellation.Enclave.Types   (PublicKey)
+import           Constellation.Node.Types      (Storage (Storage, closeStorage, deletePayload, loadPayload, savePayload, traverseStorage))
 
 berkeleyDbStorage :: FilePath -> IO Storage
 berkeleyDbStorage fpath = do

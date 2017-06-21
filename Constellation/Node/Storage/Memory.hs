@@ -1,21 +1,18 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Node.Storage.Memory where
 
-import ClassyPrelude hiding (delete, hash)
-import Crypto.Hash (Digest, SHA3_512, hash)
-import Data.ByteArray.Encoding (Base(Base64), convertToBase)
-import qualified Data.HashMap.Strict as HM
-import qualified Data.Text.Encoding as TE
+import           ClassyPrelude                 hiding (delete, hash)
+import           Crypto.Hash                   (Digest, SHA3_512, hash)
+import           Data.ByteArray.Encoding       (Base (Base64), convertToBase)
+import qualified Data.HashMap.Strict           as HM
+import qualified Data.Text.Encoding            as TE
 
-import Constellation.Enclave.Payload
-    (EncryptedPayload(EncryptedPayload, eplCt))
-import Constellation.Enclave.Types (PublicKey)
-import Constellation.Node.Types
-    (Storage(Storage, savePayload, loadPayload, deletePayload,
-             traverseStorage, closeStorage))
+import           Constellation.Enclave.Payload (EncryptedPayload (EncryptedPayload, eplCt))
+import           Constellation.Enclave.Types   (PublicKey)
+import           Constellation.Node.Types      (Storage (Storage, closeStorage, deletePayload, loadPayload, savePayload, traverseStorage))
 
 type Db = TVar (HM.HashMap Text (EncryptedPayload, [PublicKey]))
 

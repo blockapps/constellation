@@ -1,17 +1,18 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Node.Types where
 
-import ClassyPrelude
-import Data.Binary (Binary(put, get))
-import Network.HTTP.Conduit (Manager)
-import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet as HS
+import           ClassyPrelude
+import           Data.Aeson
+import           Data.Binary                   (Binary (get, put))
+import qualified Data.HashMap.Strict           as HM
+import qualified Data.HashSet                  as HS
+import           Network.HTTP.Conduit          (Manager)
 
-import Constellation.Enclave.Payload (EncryptedPayload)
-import Constellation.Enclave.Types (PublicKey)
+import           Constellation.Enclave.Payload (EncryptedPayload)
+import           Constellation.Enclave.Types   (PublicKey)
 
 data Node = Node
     { nodePi           :: PartyInfo
@@ -26,6 +27,18 @@ data PartyInfo = PartyInfo
     , piRcpts   :: HM.HashMap PublicKey Text
     , piParties :: HS.HashSet Text
     } deriving (Show)
+
+instance ToJSON PartyInfo where
+  toJSON pinfo = object [ "url" .= piUrl pinfo
+                        , "recipients" .= piRcpts pinfo
+                        , "parties" .= piParties pinfo
+                        ]
+
+instance FromJSON PartyInfo where
+  parseJSON (Object v) = PartyInfo <$> v .: "url"
+                                   <*> v .: "recipients"
+                                   <*> v .: "parties"
+  parseJSON _ = fail "Could not parse PartyInfo."
 
 instance Binary PartyInfo where
     put PartyInfo{..} = put (piUrl, HM.toList piRcpts, HS.toList piParties)

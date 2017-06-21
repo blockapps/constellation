@@ -1,22 +1,21 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Enclave where
 
-import ClassyPrelude
-import qualified Crypto.Saltine.Core.Box as Box
-import qualified Data.HashMap.Strict as HM
+import           ClassyPrelude
+import qualified Crypto.Saltine.Core.Box       as Box
+import qualified Data.HashMap.Strict           as HM
 
-import Constellation.Enclave.Key (loadKeyPairs)
-import Constellation.Enclave.Payload
-    ( EncryptedPayload(EncryptedPayload, eplSender, eplCt, eplNonce
-                      , eplRcptBoxes, eplRcptNonce)
-    , safeBeforeNM, encrypt', decrypt'
-    )
-import Constellation.Enclave.Types (PublicKey(PublicKey), unPublicKey)
-import Constellation.Util.Exception (trys)
+import           Constellation.Enclave.Key     (loadKeyPairs)
+import           Constellation.Enclave.Payload (EncryptedPayload (EncryptedPayload, eplCt, eplNonce, eplRcptBoxes, eplRcptNonce, eplSender),
+                                                decrypt', encrypt',
+                                                safeBeforeNM)
+import           Constellation.Enclave.Types   (PublicKey (PublicKey),
+                                                unPublicKey)
+import           Constellation.Util.Exception  (trys)
 
 data Enclave = Enclave
     { enclaveKeys       :: HM.HashMap PublicKey Box.SecretKey
@@ -75,8 +74,6 @@ enclaveDecryptPayload e EncryptedPayload{..} rcptPub = do
         Left err   -> return $ Left err
         Right []   -> return $ Left "enclaveDecrypt: No CombinedKey found"
         Right [ck] -> case eplRcptBoxes of
-            (rcptBox:_) -> case decrypt' eplCt eplNonce rcptBox eplRcptNonce ck of
-                Nothing -> return $ Left "enclaveDecrypt: Decryption failed"
-                Just pt -> return $ Right pt
+            (rcptBox:_) -> return $ decrypt' eplCt eplNonce rcptBox eplRcptNonce ck
             _           -> return $ Left "enclaveDecrypt: No rcptBox found"
         _          -> return $ Left "enclaveDecrypt: More than one CombinedKey found"

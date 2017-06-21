@@ -1,46 +1,54 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE StrictData                 #-}
+{-# LANGUAGE TypeApplications           #-}
+{-# LANGUAGE TypeOperators              #-}
 
 module Constellation.Node.ServantApi where
 
-import Data.Function ((&))
-import qualified Control.Monad.Ether.Implicit as I
-import Control.Monad.IO.Class
-import Control.Error
-import Data.Aeson
-    (FromJSON(parseJSON), ToJSON(toJSON), Value(Object), (.:), (.=), object)
-import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as C8
-import Control.Monad.Error.Class
-import Data.Text (Text)
-import Data.Proxy
-import Data.ByteArray.Encoding (Base(Base64), convertToBase, convertFromBase)
-import Network.HTTP.Client (newManager)
-import Network.HTTP.Client.TLS (tlsManagerSettings)
-import Network.HTTP.ReverseProxy
+import           Constellation.Enclave.Payload
+import           Constellation.Node.Types
+import           Control.Error
+import           Control.Monad
+import           Control.Monad.Error.Class
+import qualified Control.Monad.Ether.Implicit         as I
+import           Control.Monad.IO.Class
+import           Data.Aeson                           (FromJSON (parseJSON),
+                                                       ToJSON (toJSON),
+                                                       Value (Null, Object),
+                                                       object, (.:), (.=))
+import           Data.ByteArray.Encoding              (Base (Base64),
+                                                       convertFromBase,
+                                                       convertToBase)
+import           Data.ByteString                      (ByteString)
+import qualified Data.ByteString.Char8                as C8
+import           Data.Function                        ((&))
+import           Data.Proxy
+import           Data.Text                            (Text)
+import           Network.HTTP.Client                  (newManager)
+import           Network.HTTP.Client.TLS              (tlsManagerSettings)
+import           Network.HTTP.ReverseProxy
 import           Network.Wai.Middleware.RequestLogger (logStdoutDev)
 
 
-import qualified Data.Text.Encoding as TE
+import qualified Data.Text.Encoding                   as TE
 
-import qualified Network.HTTP.Types as H
+import qualified Network.HTTP.Types                   as H
 
-import Constellation.Enclave.Types (PublicKey)
-import Constellation.Util.ByteString (mustB64TextDecodeBs, b64BsDecodeText)
+import           Constellation.Enclave.Types          (PublicKey)
+import           Constellation.Util.ByteString        (b64BsDecodeText,
+                                                       mustB64TextDecodeBs)
 
-import Servant
-import Servant.Client
-import Servant.Server ()
+import           Servant
+import           Servant.Client
+import           Servant.Server                       ()
 
-import System.Environment (lookupEnv)
+import           System.Environment                   (lookupEnv)
 
-import           Network.Wai.Handler.Warp (run)
+import           Network.Wai.Handler.Warp             (run)
 
 --------------------------------------------------------------------------------
 -- * API Types
@@ -76,7 +84,7 @@ instance ToJSON SendResponse where
 
 instance FromJSON SendResponse where
   parseJSON (Object v) = SendResponse <$> v .: "key"
-  parseJSON _ = fail "Could not parse SendResponse"
+  parseJSON _          = fail "Could not parse SendResponse"
 
 data ReceiveRequest = ReceiveRequest
     { rreqKey :: Text
@@ -121,6 +129,45 @@ instance FromJSON DeleteRequest where
 instance ToJSON DeleteRequest where
   toJSON delReq = object [ "key" .= dreqKey delReq ]
 
+data Resend = ResendIndividual PublicKey Text
+            | ResendAll PublicKey
+            deriving (Show)
+
+instance FromJSON Resend where
+    parseJSON (Object v) = do
+        t <- v .: "type"
+        case (t :: Text) of
+            "individual" -> ResendIndividual
+                <$> v .: "publicKey"
+                <*> v .: "key"
+            "all"        -> ResendAll <$> v .: "publicKey"
+            _            -> mzero
+    parseJSON _          = mzero
+
+instance ToJSON Resend where
+  toJSON rsnd = case rsnd of
+    ResendIndividual pk txt -> object [ "type" .= ("individual" :: String)
+                                      , "publicKey" .= pk
+                                      , "key" .= txt
+                                      ]
+    ResendAll pk -> object [ "type" .= ("all" :: String)
+                           , "publicKey" .= pk
+                           ]
+
+data ResendResponse = ResendIndividualRes EncryptedPayload
+                    | ResentAll
+                    deriving (Show)
+
+instance ToJSON ResendResponse where
+  toJSON rsndResp = case rsndResp of
+    ResendIndividualRes epl -> toJSON epl
+    ResentAll               -> Null
+
+instance FromJSON ResendResponse where
+  parseJSON o@(Object _) = ResendIndividualRes <$> parseJSON o
+  parseJSON Null         = return ResentAll
+  parseJSON _            = fail "Could not parse ResendResponse."
+
 --------------------------------------------------------------------------------
 -- | API
 --------------------------------------------------------------------------------
@@ -132,6 +179,10 @@ type API = "send" :> ReqBody '[JSON] SendRequest :> Post '[JSON] SendResponse
 
 type RawSend = "sendRaw" :> Raw
 
+type P2P = "push" :> ReqBody '[JSON] EncryptedPayload :> Post '[JSON] Text
+      :<|> "resend" :> ReqBody '[JSON] Resend :> Post '[JSON] ResendResponse
+      :<|> "partyinfo" :> ReqBody '[JSON] PartyInfo :> Post '[JSON] PartyInfo
+      :<|> "upcheck" :> Get '[JSON] Text
 --------------------------------------------------------------------------------
 -- * Client
 --------------------------------------------------------------------------------
@@ -146,6 +197,15 @@ postSendClient
   :<|> postReceiveRawClient
   :<|> postDeleteClient = client (Proxy @API)
 
+pushClient :: EncryptedPayload -> ClientM Text
+resendClient :: Resend -> ClientM ResendResponse
+partyInfoClient :: PartyInfo -> ClientM PartyInfo
+upcheckClient :: ClientM Text
+
+pushClient
+  :<|> resendClient
+  :<|> partyInfoClient
+  :<|> upcheckClient = client (Proxy @P2P)
 --------------------------------------------------------------------------------
 -- * Server
 --------------------------------------------------------------------------------
@@ -190,20 +250,54 @@ postDelete dReq = do
   resp <- liftIO $ runClientM (postDeleteClient dReq) constellationEnv
   either (throwError . clientErrToServantErr) return resp
 
+
+p2pServer :: ServerT P2P ProxyHandler
+p2pServer = push
+  :<|> resend
+  :<|> partyInfo
+  :<|> upcheck
+
+push :: EncryptedPayload -> ProxyHandler Text
+push epl = do
+  constellationEnv <- I.ask
+  resp <- liftIO $ runClientM (pushClient epl) constellationEnv
+  either (throwError . clientErrToServantErr) return resp
+
+resend :: Resend -> ProxyHandler ResendResponse
+resend rsend = do
+  constellationEnv <- I.ask
+  resp <- liftIO $ runClientM (resendClient rsend) constellationEnv
+  either (throwError . clientErrToServantErr) return resp
+
+partyInfo :: PartyInfo -> ProxyHandler PartyInfo
+partyInfo pinfo = do
+  constellationEnv <- I.ask
+  resp <- liftIO $ runClientM (partyInfoClient pinfo) constellationEnv
+  either (throwError . clientErrToServantErr) return resp
+
+upcheck :: ProxyHandler Text
+upcheck = do
+  constellationEnv <- I.ask
+  resp <- liftIO $ runClientM upcheckClient constellationEnv
+  either (throwError . clientErrToServantErr) return resp
+
+
 --------------------------------------------------------------------------------
 -- ** Application
 --------------------------------------------------------------------------------
 
+type NodeApi = (API :<|> P2P) :<|> RawSend
+
 app :: ClientEnv -> Application
 app env =
-  logStdoutDev $ serve (Proxy @(API :<|> RawSend)) $ (enter (phi env) server) :<|> (postSendRaw env)
+  logStdoutDev $ serve (Proxy @NodeApi) $ (enter (phi env) (server :<|> p2pServer)) :<|> (postSendRaw env)
 
 initProxyApp :: IO ()
 initProxyApp = do
   mprt <- lookupEnv "PROXY_PORT"
   env <- mkConstellationEnv
   case read <$> mprt of
-    Nothing -> error "Missing Env Var: PROXY_PORT"
+    Nothing   -> error "Missing Env Var: PROXY_PORT"
     Just port -> run port $ app env
 
 initProxyApp' :: ClientEnv -> Int -> IO ()
@@ -217,7 +311,7 @@ mkConstellationEnv = do
   mgr <- newManager tlsManagerSettings
   ebaseUrl <- runExceptT $ makeBaseUrl
   case ebaseUrl of
-    Left e -> error e
+    Left e        -> error e
     Right baseUrl -> return $ ClientEnv mgr baseUrl
 
 makeBaseUrl :: ExceptT String IO BaseUrl
@@ -230,9 +324,9 @@ makeBaseUrl = do
   where
     parseScheme :: MonadError String m => String -> m Scheme
     parseScheme sch = case sch of
-      "Http" -> return Http
+      "Http"  -> return Http
       "Https" -> return Https
-      _ -> throwError "URI scheme must be Http or Https."
+      _       -> throwError "URI scheme must be Http or Https."
 
 --------------------------------------------------------------------------------
 clientErrToServantErr :: ServantError -> ServantErr

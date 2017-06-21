@@ -1,13 +1,13 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Util.AtExit where
 
-import ClassyPrelude
-import Control.Exception (SomeException)
-import Control.Logging (warnS')
-import System.IO.Unsafe (unsafePerformIO)
-import qualified Data.Text as T
+import           ClassyPrelude
+import           Control.Exception (SomeException)
+import           Control.Logging   (warnS')
+import qualified Data.Text         as T
+import           System.IO.Unsafe  (unsafePerformIO)
 
 funcs :: MVar (Maybe [IO ()])
 funcs = unsafePerformIO (newMVar (Just []))

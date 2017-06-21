@@ -1,20 +1,21 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Enclave.Types where
 
-import ClassyPrelude
-import Data.Aeson (FromJSON(..), ToJSON(..))
-import Data.Binary (Binary(put, get))
-import Data.ByteArray.Encoding (Base(Base64), convertToBase)
-import Data.Hashable (Hashable(hashWithSalt))
-import Data.Maybe (fromJust)
-import qualified Crypto.Saltine.Class as S
-import qualified Crypto.Saltine.Core.Box as Box
-import qualified Data.Aeson as AE
+import           ClassyPrelude
+import qualified Crypto.Saltine.Class          as S
+import qualified Crypto.Saltine.Core.Box       as Box
+import           Data.Aeson                    (FromJSON (..), FromJSONKey,
+                                                ToJSON (..), ToJSONKey)
+import qualified Data.Aeson                    as AE
+import           Data.Binary                   (Binary (get, put))
+import           Data.ByteArray.Encoding       (Base (Base64), convertToBase)
+import           Data.Hashable                 (Hashable (hashWithSalt))
+import           Data.Maybe                    (fromJust)
 
-import Constellation.Util.ByteString
+import           Constellation.Util.ByteString
 
 newtype PublicKey = PublicKey { unPublicKey :: Box.PublicKey }
                   deriving (Eq)
@@ -40,6 +41,10 @@ instance FromJSON PublicKey where
 
 instance ToJSON PublicKey where
   toJSON = toJSON . b64BsDecodeText . S.encode . unPublicKey
+
+
+instance ToJSONKey PublicKey
+instance FromJSONKey PublicKey
 
 mkPublicKey :: ByteString -> Maybe PublicKey
 mkPublicKey bs = PublicKey <$> S.decode bs

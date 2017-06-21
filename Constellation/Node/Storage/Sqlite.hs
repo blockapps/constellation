@@ -1,27 +1,28 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Node.Storage.Sqlite where
 
-import ClassyPrelude hiding (fold, delete, hash)
-import Control.Monad (void)
-import Crypto.Hash (Digest, SHA3_512, hash)
-import Data.Binary (encode, decode)
-import Data.ByteArray.Encoding (Base(Base64), convertToBase)
-import Data.Pool (createPool, withResource, destroyAllResources)
-import Database.SQLite.Simple
-    (Connection, Query, Only(..), open, close, execute, execute_, query, fold_)
-import System.Directory (doesFileExist)
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.Text.Encoding as TE
-import qualified Text.RawString.QQ as QQ
+import           ClassyPrelude                 hiding (delete, fold, hash)
+import           Control.Monad                 (void)
+import           Crypto.Hash                   (Digest, SHA3_512, hash)
+import           Data.Binary                   (decode, encode)
+import           Data.ByteArray.Encoding       (Base (Base64), convertToBase)
+import qualified Data.ByteString.Lazy          as BL
+import           Data.Pool                     (createPool, destroyAllResources,
+                                                withResource)
+import qualified Data.Text.Encoding            as TE
+import           Database.SQLite.Simple        (Connection, Only (..), Query,
+                                                close, execute, execute_, fold_,
+                                                open, query)
+import           System.Directory              (doesFileExist)
+import qualified Text.RawString.QQ             as QQ
 
-import Constellation.Enclave.Payload
-    (EncryptedPayload(EncryptedPayload, eplCt))
-import Constellation.Enclave.Types (PublicKey)
-import Constellation.Node.Types (Storage(..))
+import           Constellation.Enclave.Payload (EncryptedPayload (EncryptedPayload, eplCt))
+import           Constellation.Enclave.Types   (PublicKey)
+import           Constellation.Node.Types      (Storage (..))
 
 createStmts :: [Query]
 createStmts =

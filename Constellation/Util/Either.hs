@@ -1,10 +1,10 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Util.Either where
 
-import ClassyPrelude
-import Control.Monad.Trans.Either (EitherT, hoistEither)
+import           ClassyPrelude
+import           Control.Monad.Trans.Either (EitherT, hoistEither)
 
 fromRight :: Either a b -> b
 fromRight (Left _)  = error "fromRight: Got Left"

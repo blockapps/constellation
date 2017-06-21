@@ -1,16 +1,15 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Node.Storage.TestUtil where
 
-import ClassyPrelude
-import Test.Tasty.HUnit ((@?), (@?=), Assertion)
-import qualified Data.ByteString.Char8 as BC
+import           ClassyPrelude
+import qualified Data.ByteString.Char8         as BC
+import           Test.Tasty.HUnit              (Assertion, (@?), (@?=))
 
-import Constellation.Enclave.Key (newKeyPair)
-import Constellation.Enclave.Payload (encrypt)
-import Constellation.Enclave.Types (PublicKey(unPublicKey))
-import Constellation.Node.Types (Storage(loadPayload, savePayload, deletePayload,
-                                         closeStorage))
+import           Constellation.Enclave.Key     (newKeyPair)
+import           Constellation.Enclave.Payload (encrypt)
+import           Constellation.Enclave.Types   (PublicKey (unPublicKey))
+import           Constellation.Node.Types      (Storage (closeStorage, deletePayload, loadPayload, savePayload))
 
 testStorage :: Storage -> String -> ((String -> IO ()) -> Assertion)
 testStorage storage testName = \step -> do

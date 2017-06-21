@@ -1,13 +1,13 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE StrictData        #-}
 module Constellation.Util.Text.Test where
 
-import ClassyPrelude
-import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit ((@?=), testCase)
+import           ClassyPrelude
+import           Test.Tasty              (TestTree, testGroup)
+import           Test.Tasty.HUnit        (testCase, (@?=))
 
-import Constellation.Util.Text (tformat)
+import           Constellation.Util.Text (tformat)
 
 tests :: TestTree
 tests = testGroup "Util.Text"

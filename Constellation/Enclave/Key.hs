@@ -1,26 +1,27 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StrictData #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE StrictData        #-}
+{-# LANGUAGE TupleSections     #-}
 module Constellation.Enclave.Key where
 
-import Prelude (putStrLn)
-import ClassyPrelude hiding (hash, putStrLn)
-import Control.Monad.Trans.Either (EitherT(EitherT), runEitherT)
-import Data.ByteArray.Encoding (Base(Base64), convertToBase)
-import qualified Crypto.Saltine.Class as S
-import qualified Crypto.Saltine.Core.Box as Box
-import qualified Data.Aeson as AE
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.Text as T
+import           ClassyPrelude                 hiding (hash, putStrLn)
+import           Control.Monad.Trans.Either    (EitherT (EitherT), runEitherT)
+import qualified Crypto.Saltine.Class          as S
+import qualified Crypto.Saltine.Core.Box       as Box
+import qualified Data.Aeson                    as AE
+import           Data.ByteArray.Encoding       (Base (Base64), convertToBase)
+import qualified Data.ByteString.Lazy          as BL
+import qualified Data.Text                     as T
+import           Prelude                       (putStrLn)
 
-import Constellation.Enclave.Types
-    (PublicKey(PublicKey, unPublicKey), mkPublicKey)
-import Constellation.Util.ByteString (b64TextDecodeBs)
-import Constellation.Util.Either (fromShowRight, flattenEithers, maybeToEitherT)
-import Constellation.Util.Lockable
-    (Lockable(Unlocked), lock, promptingUnlock, unlock)
+import           Constellation.Enclave.Types   (PublicKey (PublicKey, unPublicKey),
+                                                mkPublicKey)
+import           Constellation.Util.ByteString (b64TextDecodeBs)
+import           Constellation.Util.Either     (flattenEithers, fromShowRight,
+                                                maybeToEitherT)
+import           Constellation.Util.Lockable   (Lockable (Unlocked), lock,
+                                                promptingUnlock, unlock)
 
 newKeyPair :: IO (PublicKey, Box.SecretKey)
 newKeyPair = do

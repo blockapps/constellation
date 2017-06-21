@@ -1,15 +1,23 @@
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
+{-# LANGUAGE NoImplicitPrelude   #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StrictData          #-}
 module Constellation.Enclave.Payload where
 
-import ClassyPrelude
-import Data.Binary (Binary(put, get))
-import Data.Maybe (fromJust)
-import qualified Crypto.Saltine.Class as S
-import qualified Crypto.Saltine.Core.Box as Box
+import           ClassyPrelude
+
+import           Control.Error
+import           Control.Monad.Trans           (lift)
+import qualified Crypto.Saltine.Class          as S
+import qualified Crypto.Saltine.Core.Box       as Box
 import qualified Crypto.Saltine.Core.SecretBox as SBox
+import           Data.Aeson
+import           Data.Binary                   (Binary (get, put))
+import           Data.ByteArray.Encoding       (Base (Base64), convertFromBase,
+                                                convertToBase)
+import           Data.Maybe                    (fromJust)
+import qualified Data.Text.Encoding            as T
 
 data EncryptedPayload = EncryptedPayload
     { eplSender    :: Box.PublicKey
@@ -19,8 +27,46 @@ data EncryptedPayload = EncryptedPayload
     , eplRcptNonce :: Box.Nonce
     } deriving Eq
 
+bytestringText :: ByteString -> Text
+bytestringText = T.decodeUtf8 . convertToBase Base64
+
+
+textBytestring :: Text -> Either String ByteString
+textBytestring = convertFromBase Base64 . T.encodeUtf8
+
 instance Show EncryptedPayload where
     show = show . encodeable
+
+instance ToJSON EncryptedPayload where
+  toJSON epl =
+    object [ "sender" .= (bytestringText . S.encode . eplSender $ epl)
+           , "ct" .= (bytestringText . eplCt $ epl)
+           , "nonce" .= (bytestringText . S.encode . eplNonce $ epl)
+           , "recipientBoxes" .= (bytestringText <$> eplRcptBoxes epl)
+           , "recipientNonce" .= (bytestringText . S.encode . eplRcptNonce $ epl)
+           ]
+
+instance FromJSON EncryptedPayload where
+    parseJSON (Object v) = do
+      eres <- runExceptT $ do
+        sndr <- do
+          bsender <- ExceptT $ textBytestring <$> v .: "sender"
+          maybe (fail "Could not parse sender.") return $ S.decode bsender
+        ct <- ExceptT $ textBytestring <$> v .: "ct"
+        nonce <- do
+          bsnonce <- ExceptT $ textBytestring <$> v .: "nonce"
+          maybe (fail "Could not parse Nonce.") return $ S.decode bsnonce
+        rboxes <- do
+          (txtBoxes :: [Text]) <- lift $ v .: "recipientBoxes"
+          traverse (hoistEither . textBytestring) txtBoxes
+        rnonce <- do
+          bsnonce <- ExceptT $ textBytestring <$> v .: "recipientNonce"
+          maybe (fail "Could not parse RecipientNonce.") return $ S.decode bsnonce
+        return $ EncryptedPayload sndr ct nonce rboxes rnonce
+      case eres of
+        Left e    -> fail e
+        Right epl -> return epl
+    parseJSON _ = fail "Could not parse EncryptedPayload."
 
 encodeable :: EncryptedPayload
            -> (ByteString, ByteString, ByteString, [ByteString], ByteString)
@@ -80,7 +126,7 @@ decrypt :: ByteString
         -> Box.Nonce
         -> Box.PublicKey
         -> Box.SecretKey
-        -> Maybe ByteString
+        -> Either String ByteString
 decrypt ct nonce rcptBox rcptNonce senderPub pk =
     decrypt' ct nonce rcptBox rcptNonce ck
   where
@@ -91,10 +137,10 @@ decrypt' :: ByteString
          -> ByteString
          -> Box.Nonce
          -> Box.CombinedKey
-         -> Maybe ByteString
-decrypt' ct nonce rcptBox rcptNonce ck =
-    case Box.boxOpenAfterNM ck rcptNonce rcptBox of
-        Nothing -> Nothing
-        Just emk -> case S.decode emk of
-            Nothing -> Nothing
-            Just mk -> SBox.secretboxOpen mk nonce ct
+         -> Either String ByteString
+decrypt' ct nonce rcptBox rcptNonce ck = do
+    emk <- Box.boxOpenAfterNM ck rcptNonce rcptBox `note'` "Couldn't open box after nm."
+    mk <- S.decode emk `note'` "Couldn't decode box contents."
+    SBox.secretboxOpen mk nonce ct `note'` "Couldn't open secret box"
+  where
+    note' = flip note
